@@ -1,2 +1,2 @@
 # Gomoku
-Gomuku Game
+Gomuku Game implemented together with Javascript
