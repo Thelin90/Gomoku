@@ -1,0 +1,1417 @@
+<!DOCTYPE html>
+<html >
+  <head>
+    <meta charset="UTF-8">
+    <title>Gomoku JS</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+	<style>
+	@import url(http://fonts.googleapis.com/css?family=Roboto:700);
+
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #2c3e50;
+  min-width: 300px;
+}
+
+section {
+  margin-top: 10px;
+}
+
+.blackball {
+  margin: 15%;
+  width: 70%;
+  height: 70%;
+  border: 3px solid #000000;
+  background-color: #000000;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.ballWhite {
+  margin: 15%;
+  width: 70%;
+  height: 70%;
+  border: 3px solid #FFFFFF;
+  background-color: #FFFFFF;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.board {
+  margin: auto;
+  margin-top: 10px;
+  width: 400px;
+  height: 400px;
+}
+
+.boardRow {
+  width: 100%;
+  height: 6.66667%;
+  border-bottom: 1px solid #2c3e50;
+  box-sizing: border-box;
+}
+
+.boardCol {
+  width: 6.66667%;
+  height: 100%;
+  background-color: #34495e;
+  float: left;
+  border-radius: 3px;
+  border-left: 1px solid #2c3e50;
+  box-sizing: border-box;
+}
+
+.btn {
+	height: 30px;
+	width: 400px;
+	
+}
+.messagesContainer .newMainText {
+	font-size: 25px;
+	color: #2ecc71;
+}
+
+.messagesContainer2 .newMainText2 {
+	font-size: 16px;
+	color: #2ecc71;
+}
+
+.newMainText2 {
+	font-size: 16px;
+	color: #000000;
+}
+
+.newMainText3 {
+	font-size: 10px;
+	font-style: code;
+	color: #FFFFFF;
+}
+
+
+select {
+	width: 400px;
+	font-size: 25px;
+}
+select option:first-child {
+	font-size: 25px;
+}
+select option:second-child {
+	font-size: 25px;
+}
+select option:third-child {
+	font-size: 25px;
+}
+select option:fourth-child {
+	font-size: 25px;
+}
+	</style>
+	<script src='http://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.3/jquery.min.js'></script>
+<script>
+/**
+* This javascript code implements the game of gomoku, human vs human
+* human vs AI1, human vs AI2, and AI1 vs AI2.
+*
+* The code also use the library of jquery, to make the experience better.
+* The code is all javascript implemented within this HTML file.
+*
+* @author Simon Thelin
+* @version 2.1.1
+* @date 2016-10-27
+*/
+$(document).ready(function() {
+
+$('div.boardCol').mousedown(handleMouseDown); // handles the mouse down clicks
+	
+/**
+* Variables used within the program, this is only set on the first time of the game
+* then the onPageLoad will be called within the application
+*/
+var player = "HumanVsHuman";
+var humhum = 0, circle = 1;
+var board2d;
+var winner, playerNow;
+var win;
+var ma = 1, mb = 0;
+var lastValueColor;
+var flag = 0;
+var cirle = 1;
+
+/**
+* Create the 2d array for the board game
+*/
+create2D_arr();
+
+/**
+* This function is called everytime a game is reset, in different modes, called several times during gameplay if
+* requested.
+*/
+function onPageLoad() {
+	$('div.boardCol').mousedown(handleMouseDown);
+	/**
+	* Global variable, always HumanVsHuman as default value
+	*/
+	player = getPlayer();
+	humhum = 0, circle = 1;
+	ma = 1, mb = 0;
+	flag = 0;
+	rnd = 0;
+	create2D_arr();
+}
+
+/**
+* This function will read the option choosed and send it to setPlayerMode, which
+* will delegate the value.
+*/
+$('select').change(function(){
+	setPlayerMode($(this).children('option:selected').data('id'));
+});
+
+/**
+* Function called made when user restart a game.
+*/
+$("#restart").click(function(){
+	//alert("Game Will Now Restart In Mode: " + player);
+	var message = $("#message");
+	message.text("Game Will Now Restart In Mode: " + player);
+    clear2d_arr();
+	clearBoard();
+	onPageLoad();
+});
+
+/**
+* Creating an 2D array for the board, to check if win or not
+*
+* Debug code below, print into the function create2D_arr to check if the values 
+* are correct within the matrix.
+*
+*	var x,y;
+*	for (x=0;x<iMax;x++) {
+*		
+*		for (y=0;y<jMax;y++) {
+*			console.log("[r]: "+x + "[c]: "+ y+" val: "+board2d[x][y]);
+*		}
+*	}
+*	
+*/
+function create2D_arr() {
+	var iMax = 15;
+	var jMax = 15;
+	board2d = new Array();
+	for (i=0;i<iMax;i++) {
+		board2d[i]=new Array();
+		for (j=0;j<jMax;j++) {
+			board2d[i][j]=0;
+		}
+	}
+}
+
+
+/**
+* Function that clear the matrix, if needed.
+*/
+function clear2d_arr() {
+	board2d.length = 0;
+}
+	
+/**
+* Function that set the gametype of the gameplay, in 
+* this case, HumanVsHuman, HumanVsAI1, HumanVsAI2, AI2VsAI1
+* to the variable player.
+*/
+function setPlayerMode(txt) {
+	player = txt;
+}
+
+/**
+* Get the player from the option chosen by player
+*/
+function getPlayer() {
+	return player;
+}
+
+/**
+* Function handles the mouseclicks on the board, depending on what gameplay, different 
+* stuff will happen.
+*/
+function handleMouseDown(e) {
+	
+	if(!flag) {
+		var message = $("#message");
+		message.text("Try to get 5 in a row!");
+	}
+	
+	if(player == "HumanVsHuman") {
+		var cell = $(this);
+		if(!flag) {
+			hvh((cell.children().attr('id')));
+		}
+	}
+	
+	if(player == "HumanVsAI1") {
+		var cell = $(this);
+		if(!flag) {
+			hva1((cell.children().attr('id')));
+		}
+	}
+	if(player == "HumanVsAI2") {
+		var cell = $(this);
+		if(!flag) {
+			hva2((cell.children().attr('id')));
+		}
+	}
+	if(player == "AI2VsAI1") {
+	var hundred;
+		//for(hundred = 0; hundred < 100; hundred++) {
+			var cell = $(this);
+			var rnd1, rnd2;
+			if(!flag) {
+				var k, j;
+				for(k = 0; k < 15; k++) {
+					rnd1 = parseInt(Math.random()*14);
+					for(j = 0; j < 15; j++) {
+						rnd2 = parseInt(Math.random()*14);
+						a2a1(rnd1+"-"+rnd2);
+					}
+				}
+			}
+		}
+	//}
+}
+	
+/**
+* Function for the Human Vs Human 
+*/
+function hvh(boardId) {
+	var r,c;		
+	var rowAcol = get_numbers(boardId);
+	r = rowAcol[0];
+	c = rowAcol[1];
+	
+	if(humhum == 2) {
+		clearBoard();
+	}
+	
+	if(humhum == 0 && board2d[r][c] == 0 && board2d[r][c] != "white") {
+			setBoard2dArr("black", r, c);
+			actualPlayer("black");
+			paintMove(boardId, "blackball");
+			humhum = 1;
+	} 
+	
+	if(humhum == 1 && board2d[r][c] == 0 && board2d[r][c] != "black") {
+		setBoard2dArr("white", r, c);
+		actualPlayer("white");
+		paintMove(boardId, "ballWhite");
+		humhum = 0;
+	}  
+
+	checkWin(playerNow);
+}
+
+/**
+* Function for the human vs ai1
+*
+*/
+function hva1(boardId) {
+	var r,c;		
+	var rowAcol = get_numbers(boardId);
+	r = rowAcol[0];
+	c = rowAcol[1];
+	
+	if(humhum == 2) {
+		clearBoard();
+	}
+	
+	if(humhum == 0 && board2d[r][c] == 0 && board2d[r][c] != "white") {
+			setBoard2dArr("black", r, c);
+			actualPlayer("black");
+			paintMove(boardId, "blackball");
+			humhum = 1;
+			checkWin(playerNow);
+	} 
+	var row = parseInt(r);
+	var col = parseInt(c);
+	
+	ma = parseInt(Math.random()*2+1);
+	mb = parseInt(Math.random()*3+1);
+		
+	row = row + ma;
+	col = col - mb;
+	
+	if(row == r) {
+		row = row + ma;
+	}
+	
+	if(col == c) {
+		col = col + ma;
+	}
+	
+	col = Math.abs(col);
+	row = Math.abs(row);
+	
+	if(row > 14) {
+		row = r-2;
+	}
+	
+	if(col > 14) {
+		col = c-3;
+		if(col == 0) {
+			col++;
+		}
+	}
+
+	if(board2d[row][col] == "black" || board2d[row][col] == "white") {
+		var k;
+		for(k = 0; k < 15; k++) {
+			if(board2d[row][k] == 0) {
+				col = k;
+			}
+		}
+	}
+
+	if(humhum == 1 && board2d[row][col] == 0 && board2d[row][col] != "black") {
+		setBoard2dArr("white", row, col);
+		actualPlayer("white");
+		paintMove(""+row+"-"+col, "ballWhite");
+		humhum = 0;
+		checkWin(playerNow);
+	}  
+}
+
+/**
+* Function for the human vs ai2
+*/
+function hva2(boardId) {
+	var r,c;
+	var circle = [0,1,0,1];
+	var rowAcol = get_numbers(boardId);
+	r = rowAcol[0];
+	c = rowAcol[1];
+	
+	if(humhum == 2) {
+		clearBoard();
+	}
+	
+	if(humhum == 0 && board2d[r][c] == 0 && board2d[r][c] != "white") {
+			setBoard2dArr("black", r, c);
+			actualPlayer("black");
+			paintMove(boardId, "blackball");
+			humhum = 1;
+			checkWin(playerNow);			
+	} 
+	
+	var row = parseInt(r);
+	var col = parseInt(c);
+
+	var random = Math.random()*4;
+	random = parseInt(Math.abs(random));
+
+	col = c - circle[random];
+	row = r - circle[random];
+
+	col = Math.abs(col);
+	row = Math.abs(row);
+	
+	if(row > 14) {
+		row = r-2;
+	}
+	
+	if(col > 14) {
+		col = c-3;
+		if(col == 0) {
+			col++;
+		}
+	}
+
+	if(board2d[row][col] == "black" || board2d[row][col] == "white") {
+		var k;
+		for(k = 0; k < 15; k++) {
+			if(board2d[row][k] == 0) {
+				col = k;
+				k = 15;
+			}
+		}
+		
+		var j;
+		for(j = k; j > 0; j--) {
+			if(board2d[row][j] == "black" || board2d[row][j] == "white" ) {
+				col = j + 1;
+				j = 0;
+			}
+		}
+	}
+
+	if(humhum == 1 && board2d[row][col] == 0 && board2d[row][col] != "black") {
+		setBoard2dArr("white", row, col);
+		actualPlayer("white");
+		paintMove(""+row+"-"+col, "ballWhite");
+		humhum = 0;
+		circle++;
+		checkWin(playerNow);
+	}
+}
+
+/**
+* Function for the ai1 vs ai2
+*/
+function a2a1(boardId) {
+	var r,c;		
+	var rowAcol = get_numbers(boardId);
+	r = rowAcol[0];
+	c = rowAcol[1];
+
+	var circle = [0,1,0,1];
+
+	/* Not needed when ai play against eachother
+	if(humhum == 2) {
+		//clearBoard();
+	}*/
+	
+	if(humhum == 0 && board2d[r][c] == 0 && board2d[r][c] != "white") {
+		var row = parseInt(r);
+		var col = parseInt(c);
+		
+		var random = Math.random()*4;
+		random = parseInt(Math.abs(random));
+
+		col = c - circle[random];
+		row = r - circle[random];
+
+		col = Math.abs(col);
+		row = Math.abs(row);
+
+		if(row > 14) {
+			row = r-2;
+		}
+	
+		if(col > 14) {
+			col = c-3;
+			if(col == 0) {
+				col++;
+			}
+		}
+
+		if(board2d[row][col] == "black" || board2d[row][col] == "white") {
+			var k;
+			for(k = 0; k < 15; k++) {
+				if(board2d[row][k] == 0) {
+					col = k;
+					k = 15;
+				}
+			}
+		
+			var j;
+			for(j = k; j > 0; j--) {
+				if(board2d[row][j] == "black" || board2d[row][j] == "white" ) {
+					col = j + 1;
+					j = 0;
+				}
+			}
+		}
+
+		if(humhum == 0 && board2d[row][col] == 0 && board2d[row][col] != "black") {
+			setBoard2dArr("black", row, col);
+			actualPlayer("black");
+			paintMove(""+row+"-"+col, "blackball");
+			humhum = 1;
+			circle++;
+			checkWin(playerNow);
+		}	
+	} 
+	
+	
+	
+	var row = parseInt(r);
+	var col = parseInt(c);
+	
+	ma = parseInt(Math.random()*2+1);
+	mb = parseInt(Math.random()*3+1);
+		
+	row = row + ma;
+	col = col - mb;
+	
+	if(row == r) {
+		row = row + ma;
+	}
+	
+	if(col == c) {
+		col = col + ma;
+	}
+	
+	col = Math.abs(col);
+	row = Math.abs(row);
+	
+	if(row > 14) {
+		row = r-2;
+	}
+	
+	if(col > 14) {
+		col = c-3;
+		if(col == 0) {
+			col++;
+		}
+	}
+
+	if(board2d[row][col] == "black" || board2d[row][col] == "white") {
+		var k;
+		for(k = 0; k < 15; k++) {
+			if(board2d[row][k] == 0) {
+				col = k;
+			}
+		}
+	}
+
+	if(humhum == 1 && board2d[row][col] == 0 && board2d[row][col] != "black") {
+		setBoard2dArr("white", row, col);
+		actualPlayer("white");
+		paintMove(""+row+"-"+col, "ballWhite");
+		humhum = 0;
+		checkWin(playerNow);
+	}  
+}
+	
+
+function actualPlayer(color) {
+	playerNow = color;
+}
+
+function setWinner(winnerColor) {
+	winner = winnerColor;
+	humhum = 2;
+	flag = 1;
+	printWinner();
+}
+
+function printWinner() {
+	if(flag) {
+		var message = $("#message");
+		message.text("~~~~WOW!!!~~~~\nPlayer: "+winner +" has won, please restart game");
+		console.log(winner);
+		//alert("Wow!\nPlayer: "+winner +" has won, please restart game");
+	} 
+}
+
+/*
+* Clears the board
+*/
+function clearBoard() {
+	$(".boardCell").removeClass("blackball ballWhite");
+}
+	
+/*
+* The function set the value of the matrix position
+*/
+function setBoard2dArr(value, r, c){
+	board2d[r][c] = value;
+}
+
+
+/*
+* Check if black or white stone is in a 5 linear or 5 diagnol format
+* if it is, then the game ends!
+*/
+function checkWin(color) {
+		if(board2d.length > 0 ){
+	
+			var win=5, r=0, c=0, dr=0, dl=0;
+			for(var i=0; i < 15; i++){
+		
+				for(var j=0; j < 15; j++){
+			
+					(board2d[j][i]===color) ? c++ : c=0;
+					(board2d[i][j]===color) ? r++ : r=0;
+				
+					if(board2d[i][j]===color && i<15-win+1){ 
+				
+						dr=0; dl=0;
+						dr=0; dl=0;
+					
+						for(var z=0;z<win;z++){ 
+					
+							(board2d[i+z][j+z]===color) ? dr++ : dr=0;
+							(board2d[i+z][j-z]===color) ? dl++ : dl=0;
+						
+						}
+					}
+				if(c===win || r===win || dr===win || dl===win){ 
+					setWinner(playerNow);
+					if(humhum == 2) {
+						//clearBoard(); // optional
+					}
+					return true;
+				}
+			} 	r=0;
+		}
+	}
+}
+ 	
+/**
+* Paints the player ball
+*/
+function paintMove(boardValue, ball) {
+	$("#"+boardValue).addClass(ball);
+}
+	
+/**
+* RegEx for numbers
+*/
+function get_numbers(input) {
+	return input.match(/[0-9]+/g);
+}
+	
+/**
+* RegEx for operators
+*/
+function get_symbols(input) {
+	return input.match(/[-!$%^&*()_+|~=`{}\[\]:";'<>?,.\/]/g);
+}
+		
+})
+</script>
+	
+	
+</head>
+
+<body>
+  <div class="board">
+  
+   <div class="messages">
+     <div class="messagesContainer">
+       <div id="message" class="newMainText">Try to get 5 in a row!</div>
+     </div>
+   </div>
+  
+    <div class="boardRow">
+      <div class="boardCol">
+        <div id="0-0" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="0-1" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="0-2" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="0-3" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="0-4" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="0-5" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="0-6" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="0-7" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="0-8" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="0-9" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="0-10" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="0-11" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="0-12" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="0-13" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="0-14" class="boardCell"></div>
+      </div>
+    </div>
+    <div class="boardRow">
+      <div class="boardCol">
+        <div id="1-0" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="1-1" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="1-2" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="1-3" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="1-4" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="1-5" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="1-6" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="1-7" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="1-8" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="1-9" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="1-10" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="1-11" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="1-12" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="1-13" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="1-14" class="boardCell"></div>
+      </div>
+    </div>
+    <div class="boardRow">
+      <div class="boardCol">
+        <div id="2-0" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="2-1" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="2-2" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="2-3" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="2-4" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="2-5" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="2-6" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="2-7" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="2-8" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="2-9" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="2-10" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="2-11" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="2-12" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="2-13" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="2-14" class="boardCell"></div>
+      </div>
+    </div>
+    <div class="boardRow">
+      <div class="boardCol">
+        <div id="3-0" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="3-1" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="3-2" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="3-3" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="3-4" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="3-5" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="3-6" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="3-7" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="3-8" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="3-9" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="3-10" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="3-11" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="3-12" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="3-13" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="3-14" class="boardCell"></div>
+      </div>
+    </div>
+    <div class="boardRow">
+      <div class="boardCol">
+        <div id="4-0" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="4-1" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="4-2" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="4-3" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="4-4" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="4-5" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="4-6" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="4-7" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="4-8" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="4-9" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="4-10" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="4-11" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="4-12" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="4-13" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="4-14" class="boardCell"></div>
+      </div>
+    </div>
+    <div class="boardRow">
+      <div class="boardCol">
+        <div id="5-0" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="5-1" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="5-2" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="5-3" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="5-4" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="5-5" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="5-6" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="5-7" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="5-8" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="5-9" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="5-10" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="5-11" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="5-12" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="5-13" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="5-14" class="boardCell"></div>
+      </div>
+    </div>
+    <div class="boardRow">
+      <div class="boardCol">
+        <div id="6-0" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="6-1" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="6-2" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="6-3" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="6-4" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="6-5" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="6-6" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="6-7" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="6-8" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="6-9" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="6-10" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="6-11" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="6-12" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="6-13" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="6-14" class="boardCell"></div>
+      </div>
+    </div>
+    <div class="boardRow">
+      <div class="boardCol">
+        <div id="7-0" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="7-1" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="7-2" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="7-3" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="7-4" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="7-5" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="7-6" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="7-7" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="7-8" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="7-9" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="7-10" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="7-11" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="7-12" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="7-13" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="7-14" class="boardCell"></div>
+      </div>
+    </div>
+    <div class="boardRow">
+      <div class="boardCol">
+        <div id="8-0" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="8-1" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="8-2" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="8-3" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="8-4" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="8-5" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="8-6" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="8-7" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="8-8" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="8-9" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="8-10" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="8-11" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="8-12" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="8-13" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="8-14" class="boardCell"></div>
+      </div>
+    </div>
+    <div class="boardRow">
+      <div class="boardCol">
+        <div id="9-0" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="9-1" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="9-2" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="9-3" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="9-4" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="9-5" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="9-6" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="9-7" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="9-8" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="9-9" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="9-10" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="9-11" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="9-12" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="9-13" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="9-14" class="boardCell"></div>
+      </div>
+    </div>
+    <div class="boardRow">
+      <div class="boardCol">
+        <div id="10-0" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="10-1" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="10-2" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="10-3" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="10-4" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="10-5" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="10-6" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="10-7" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="10-8" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="10-9" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="10-10" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="10-11" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="10-12" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="10-13" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="10-14" class="boardCell"></div>
+      </div>
+    </div>
+    <div class="boardRow">
+      <div class="boardCol">
+        <div id="11-0" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="11-1" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="11-2" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="11-3" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="11-4" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="11-5" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="11-6" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="11-7" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="11-8" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="11-9" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="11-10" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="11-11" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="11-12" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="11-13" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="11-14" class="boardCell"></div>
+      </div>
+    </div>
+    <div class="boardRow">
+      <div class="boardCol">
+        <div id="12-0" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="12-1" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="12-2" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="12-3" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="12-4" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="12-5" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="12-6" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="12-7" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="12-8" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="12-9" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="12-10" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="12-11" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="12-12" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="12-13" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="12-14" class="boardCell"></div>
+      </div>
+    </div>
+    <div class="boardRow">
+      <div class="boardCol">
+        <div id="13-0" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="13-1" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="13-2" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="13-3" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="13-4" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="13-5" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="13-6" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="13-7" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="13-8" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="13-9" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="13-10" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="13-11" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="13-12" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="13-13" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="13-14" class="boardCell"></div>
+      </div>
+    </div>
+    <div class="boardRow">
+      <div class="boardCol">
+        <div id="14-0" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="14-1" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="14-2" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="14-3" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="14-4" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="14-5" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="14-6" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="14-7" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="14-8" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="14-9" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="14-10" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="14-11" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="14-12" class="boardCell"></div>
+      </div>
+      <div class="boardCol">
+        <div id="14-13" class="boardCell"></div>
+      </div> 	
+      <div class="boardCol">
+        <div id="14-14" class="boardCell"></div>
+      </div>
+	  
+    </div>
+
+	<select>
+		<option data-id="HumanVsHuman"> HumanVsHuman</option>
+		<option data-id="HumanVsAI1"> HumanVsAI1</option>
+		<option data-id="HumanVsAI2"> HumanVsAI2</option>
+		<option data-id="AI2VsAI1">AI2VsAI1</option>
+	</select>
+
+	<div>
+	<input type="button" class="btn" id="restart" name="restart" value="Restart Game" />
+	</div>
+	
+	<div class="messages2">
+     <div class="messagesContainer2">
+       <div id="message" class="newMainText2">1. Default game is Human vs Human, just start by clicking on the board.</div>
+	   <div id="message" class="newMainText2">2. If you want to play another state, choose which state you want to play in the option panel.</div>
+	   <div id="message" class="newMainText2">3. Press restart game.</div>
+	    <div id="message" class="newMainText2">4. Play game! Repeat! Challenge your friends!</div>
+		<div id="message" class="newMainText2">5*. To test AI2 Vs AI1, choose it, restart, and press once on the board, wait, and se the result!</div>
+		<div id="message" class="newMainText3">JS Developement by Simon Thelin</div>
+     </div>
+   </div>
+	
+  </div>
+  
+  </body>
+</html>
